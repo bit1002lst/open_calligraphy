@@ -42,7 +42,7 @@ def get_bg(input_img):
     cv2.waitKey()
     
 def main():
-    img_files = glob.glob('../char_detection/data/images/*.jpeg')
+    img_files = glob.glob('../char_detection/data/images/test.jpeg')
     for img_file in img_files:
         get_bg(cv2.imread(img_file))
         break
