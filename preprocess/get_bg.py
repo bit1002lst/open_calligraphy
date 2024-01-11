@@ -3,6 +3,8 @@ import random
 import glob
 import numpy as np
 import pdb
+import os
+import uuid
 
 def get_bg(input_img):
     # 定义结构元素大小
@@ -14,13 +16,13 @@ def get_bg(input_img):
     bg_mask = cv2.inRange(img_gray, 100, 255)
     # 对图像进行腐蚀操作
     bg_mask = cv2.erode(bg_mask, kernel, iterations=1)
-    fg_pos = np.where(bg_mask==0)
+    fg_pos = np.where(bg_mask!=-1)
     new_img = input_img * cv2.merge([bg_mask, bg_mask ,bg_mask])
     img_h, img_w = new_img.shape[:2]
     
     for pos_h, pos_w in zip(fg_pos[0], fg_pos[1]):
         color_list = []
-        ratio_list = [3, 5, 9, 15, 25, 35, 55]
+        ratio_list = [3, 5, 9, 15, 25, 35, 55, 75, 95, 133]
         for ratio_item in ratio_list:
             for tmp_i in range(ratio_item):
                 for tmp_j in range(ratio_item):
@@ -38,14 +40,25 @@ def get_bg(input_img):
         # new_img[pos_h, pos_w] = np.mean(np.array(color_list), axis=0).astype(np.uint8)
         new_img[pos_h, pos_w] = random.choice(color_list)
     # new_img = cv2.GaussianBlur(new_img, (25,25), 0, 1)
-    cv2.imshow('test', new_img[:,:,::-1])
-    cv2.waitKey()
+    return new_img[:,:,::-1]
+    # cv2.imshow('test', new_img[:,:,::-1])
+    # cv2.waitKey()
     
 def main():
-    img_files = glob.glob('../char_detection/data/images/test.jpeg')
+    img_files = glob.glob('../char_detection/data/images/*.jpeg')
     for img_file in img_files:
-        get_bg(cv2.imread(img_file))
-        break
+        out_file = '../char_binary/img_bgs/' + img_file.replace('.jpeg', '_bg.png')
+        if os.path.exists(out_file):
+            continue
+        bg_img = get_bg(cv2.imread(img_file))
+        cv2.imwrite(out_file, bg_img)
+        '''
+        while True:
+            out_file = '../char_binary/img_bgs/' + str(uuid.uuid4()) + '.png'
+            if not os.path.exists(out_file):
+                cv2.imwrite(out_file, bg_img)
+                break
+        '''
 
 main()
 
