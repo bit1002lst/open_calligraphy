@@ -47,9 +47,12 @@ def get_bg(input_img):
 def main():
     img_files = glob.glob('../char_detection/data/images/*.jpeg')
     for img_file in img_files:
-        out_file = '../char_binary/img_bgs/' + img_file.replace('.jpeg', '_bg.png')
+        img_name = os.path.basename(img_file)
+        out_file = '../char_binary/img_bgs/' + img_name.replace('.jpeg', '_bg.png')
+        
         if os.path.exists(out_file):
             continue
+        print(out_file)
         bg_img = get_bg(cv2.imread(img_file))
         cv2.imwrite(out_file, bg_img)
         '''
