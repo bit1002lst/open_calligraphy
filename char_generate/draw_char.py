@@ -11,6 +11,7 @@ import json
 import re
 import pdb
 import math
+import uuid
 
 def fonttoUnicode(oneStr):
     t=oneStr
@@ -138,22 +139,33 @@ def example():
 def draw_char(char, bg_img, font):
     pass
 
+def img_split(src_img, src_gt):
+    img_size = src_img.shape[:2]
+    
+    pass
+
 def main():
     font_files = glob.glob('../../fonts/*.ttf') + glob.glob('../../fonts/*.TTF')
+    
     font_file = random.choice(font_files)
-    bg_files = glob.glob('../char_binary/img_bgs/兰亭集序_bg.png')
+    bg_files = glob.glob('../char_binary/img_bgs/*.png')
     bg_file = random.choice(bg_files)
     bg_img = cv2.imread(bg_file)
-    # char_img, gt_img = draw_chinese_char('我', bg_file, font_file)
+    # char_img, gt_img, char_pos = draw_chinese_char('我', bg_img, font_file)
     # cv2.imshow('src', char_img)
     # cv2.imshow('gt', gt_img)
     # cv2.waitKey()
-    print(bg_file)
-    draw_sentence('混顿饭嘎口红放入奴隶撒娇更加开放而阿奴给你看路人粉结果撒额的按分而看就啊林父爱', bg_img, font_file)
+    sentence_img, char_list = draw_sentence('混顿饭嘎口红放入奴隶撒娇更加开放而阿奴给你看路人粉结果撒额的按分而看就啊林父爱努蒂萨妇女节的萨夫家的沙发那u内容', bg_img, font_file)
+    img_list, gt_list = img_split(sentence_img, char_list)
+    out_name = str(uuid.uuid1())
+    out_img_file = os.path.join('', out_name+'.png')
+    out_gt_file = os.path.join('', out_name+'.txt')
+    cv2.imwrite()
+
     
 
 def draw_sentence(input_str, bg_img, font_file):
-    gt_list = []
+    char_pos_list = []
     char_size = 100
     margin_size = 10
     bg_size = bg_img.shape[:2]
@@ -165,6 +177,7 @@ def draw_sentence(input_str, bg_img, font_file):
                 int(bg_size[0] * resize_ratio) + 1)
     bg_img = cv2.resize(bg_img, out_size)
     font_color = (random.randint(0,50), random.randint(0,50), random.randint(0,50))
+    
     for row_char in range(line_num):
         for col_char in range(char_num_per_line):
             index_char = row_char * char_num_per_line + col_char
@@ -179,8 +192,13 @@ def draw_sentence(input_str, bg_img, font_file):
             char_img, _, char_bbox = draw_chinese_char(char_val, char_bg, font_file, pos='random', font_color=font_color)
             bg_img[start_pos[0]: start_pos[0]+128,
                    start_pos[1]: start_pos[1]+128] = char_img
-            cv2.imshow('tmp', bg_img)
-            cv2.waitKey()
+            char_pos = [start_pos[0] + char_bbox[0][0],
+                        start_pos[1] + char_bbox[0][1],
+                        start_pos[0] + char_bbox[1][0],
+                        start_pos[1] + char_bbox[1][1]]
+            
+            char_pos_list.append(char_pos)
+    return bg_img, char_pos_list
 
 main()
 
