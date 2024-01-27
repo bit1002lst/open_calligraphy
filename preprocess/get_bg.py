@@ -11,6 +11,7 @@ sys.path.append("..")
 from utils.utils import *
 
 from tqdm import tqdm
+from tqdm.contrib import tzip
 
 def get_bg(input_img, method):
     # 定义结构元素大小
@@ -29,7 +30,7 @@ def get_bg(input_img, method):
     new_img = input_img * cv2.merge([bg_mask, bg_mask ,bg_mask])
     img_h, img_w = new_img.shape[:2]
     
-    for pos_h, pos_w in tqdm(zip(fg_pos[0], fg_pos[1])):
+    for pos_h, pos_w in tzip(fg_pos[0], fg_pos[1]):
         color_list = []
         ratio_list = [3, 5, 9, 15, 25, 35, 55, 75, 95, 133]
         for ratio_item in ratio_list:
