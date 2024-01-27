@@ -57,7 +57,7 @@ def draw_ttf(fontNames):
 
             im.save(out_file)
 
-def draw_chinese_char(input_char, src_img, font, pos='center', font_color=None):
+def draw_chinese_char(input_char, src_img, font, pos='center', font_color=None, blur_kernel='random'):
     # im = Image.new('1', (128, 128), 255)
     if src_img.shape[0] == 128 and src_img.shape[1] == 128:
         im_tmp = Image.fromarray(src_img)
@@ -94,8 +94,12 @@ def draw_chinese_char(input_char, src_img, font, pos='center', font_color=None):
     draw_gt.text(lt_pos, input_char, fill = (0, 0, 0), font=ft)
     im_tmp = np.array(im_tmp)
     im_gt = np.array(im_gt)
-    kernel_size = (random.randint(0,7)*2+1, random.randint(0,7)*2+1)
-    cv2.GaussianBlur(im_tmp, kernel_size, 0, 1)
+    if blur_kernel == 'random':
+        kernel_size = (random.randint(0,7)*2+1, random.randint(0,7)*2+1)
+    else:
+        assert isinstance(blur_kernel, int) and blur_kernel%2 == 1, 'blur size must be 2n+1'
+        kernel_size = (blur_kernel, blur_kernel)
+    im_tmp = cv2.GaussianBlur(im_tmp, kernel_size, 0, 1)
     return im_tmp, im_gt, [lt_pos[::-1], rb_pos[::-1]]
 
 def draw_unicode(input_range):
@@ -213,11 +217,12 @@ def np_imread(img_file):
     return cv_img
 
 def show_bbox(src_img,char_list):
+    show_img = src_img.copy()
     for tmp_gt in char_list:
-        cv2.rectangle(src_img, (int(tmp_gt[1]), int(tmp_gt[0])),
+        cv2.rectangle(show_img, (int(tmp_gt[1]), int(tmp_gt[0])),
                                     (int(tmp_gt[3]), int(tmp_gt[2])), (0,0,255), 3)
-    src_img = cv2.resize(src_img, (512,512))
-    cv2.imshow('tmp', src_img)
+    src_img = cv2.resize(show_img, (512,512))
+    cv2.imshow('tmp', show_img)
     cv2.waitKey()
 
 def main(method):
@@ -230,7 +235,7 @@ def main(method):
         bg_files = glob.glob('..\\char_binary\\img_bgs\\书法*.png')
     bg_file = random.choice(bg_files)
     bg_img = np_imread(bg_file)
-    sentence_img, char_list = draw_sentence('混顿饭嘎口红放入奴隶撒娇更加开放而阿奴给你看路人粉结果撒额的按分而看就啊林父爱努蒂萨妇女节的萨夫家的沙发那u内容', bg_img, font_file, method)
+    sentence_img, char_list = draw_sentence('混顿饭嘎口红放入奴隶撒娇更加开放而阿奴给你看路人粉结果撒额的按分而看就啊林父爱努蒂萨妇女节的萨夫家的沙发那u内容', bg_img, font_file, method, blur_kernel=random.randint(0,7)*2+1)
     
     out_name = str(uuid.uuid1())
     out_img_file = os.path.join('', out_name+'.png')
@@ -246,7 +251,7 @@ def add_noise(input_img, noise_level, noise_color):
     out_img = input_img
     return out_img
 
-def draw_sentence(input_str, bg_img, font_file, method, noise_level=0):
+def draw_sentence(input_str, bg_img, font_file, method, noise_level=0, blur_kernel='random'):
     char_pos_list = []
     char_size = 100
     margin_size = 10
@@ -273,7 +278,7 @@ def draw_sentence(input_str, bg_img, font_file, method, noise_level=0):
             char_bg = bg_img[start_pos[0]: start_pos[0]+128,
                              start_pos[1]: start_pos[1]+128]
             
-            char_img, _, char_bbox = draw_chinese_char(char_val, char_bg, font_file, pos='random', font_color=font_color)
+            char_img, _, char_bbox = draw_chinese_char(char_val, char_bg, font_file, pos='random', font_color=font_color, blur_kernel=blur_kernel)
             # show_bbox(char_img, [char_bbox[0] + char_bbox[1]])
 
             bg_img[start_pos[0]: start_pos[0]+128,
