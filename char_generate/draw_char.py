@@ -220,26 +220,33 @@ def show_bbox(src_img,char_list):
     cv2.imshow('tmp', src_img)
     cv2.waitKey()
 
-def main():
+def main(method):
     font_files = glob.glob('..\\..\\fonts\\*.ttf') + glob.glob('..\\..\\fonts\\*.TTF')
     
     font_file = random.choice(font_files)
-    bg_files = glob.glob('..\\char_binary\\img_bgs\\*.png')
+    if method == 'stele':
+        bg_files = glob.glob('..\\char_binary\\img_bgs\\碑帖*.png')
+    elif method == 'calligraphy':
+        bg_files = glob.glob('..\\char_binary\\img_bgs\\书法*.png')
     bg_file = random.choice(bg_files)
     bg_img = np_imread(bg_file)
-    sentence_img, char_list = draw_sentence('混顿饭嘎口红放入奴隶撒娇更加开放而阿奴给你看路人粉结果撒额的按分而看就啊林父爱努蒂萨妇女节的萨夫家的沙发那u内容', bg_img, font_file)
+    sentence_img, char_list = draw_sentence('混顿饭嘎口红放入奴隶撒娇更加开放而阿奴给你看路人粉结果撒额的按分而看就啊林父爱努蒂萨妇女节的萨夫家的沙发那u内容', bg_img, font_file, method)
     
     out_name = str(uuid.uuid1())
     out_img_file = os.path.join('', out_name+'.png')
     out_gt_file = os.path.join('', out_name+'.txt')
-    
-    cv2.imwrite(out_img_file, sentence_img)
+    cv2.imencode('.png', sentence_img)[1].tofile(out_img_file)
+    # cv2.imwrite(out_img_file, sentence_img)
     img_list, gt_list = img_split(sentence_img, char_list)
 
     for img_index, img_item in enumerate(img_list):
         show_bbox(img_item, gt_list[img_index])
 
-def draw_sentence(input_str, bg_img, font_file):
+def add_noise(input_img, noise_level, noise_color):
+    out_img = input_img
+    return out_img
+
+def draw_sentence(input_str, bg_img, font_file, method, noise_level=0):
     char_pos_list = []
     char_size = 100
     margin_size = 10
@@ -251,8 +258,10 @@ def draw_sentence(input_str, bg_img, font_file):
     out_size = (int(bg_size[1] * resize_ratio) + 1, 
                 int(bg_size[0] * resize_ratio) + 1)
     bg_img = cv2.resize(bg_img, out_size)
-    font_color = (random.randint(0,50), random.randint(0,50), random.randint(0,50))
-    
+    if method == 'calligraphy':
+        font_color = (random.randint(0,50), random.randint(0,50), random.randint(0,50))
+    elif method == 'stele':
+        font_color = (random.randint(200, 255), random.randint(200, 255), random.randint(200, 255))
     for row_char in range(line_num):
         for col_char in range(char_num_per_line):
             index_char = row_char * char_num_per_line + col_char
@@ -276,5 +285,4 @@ def draw_sentence(input_str, bg_img, font_file):
             char_pos_list.append(char_pos)
     return bg_img, char_pos_list
 
-main()
-
+main(method='stele')
