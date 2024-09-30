@@ -1,7 +1,6 @@
 import matplotlib
 import cv2
 import random
-import cv2
 from PIL import ImageFont, ImageDraw, Image
 from fontTools.ttLib import TTFont
 import glob
@@ -13,7 +12,6 @@ import pdb
 import math
 import uuid
 import pdb
-
 
 # bbox定义
 # [x1,y1,x2,y2]
@@ -44,54 +42,66 @@ def draw_ttf(fontNames):
                 continue
             im = Image.new('1', (128, 128), 255)
             draw = ImageDraw.Draw(im) #修改图片
-            pdb.set_trace()
             ft = ImageFont.truetype(
                 font=fontName,
                 size=100
             )
             ''''''
-            word_width, word_height = draw.textsize(val, font=ft)
+            word_width, word_height = draw.textbbox(val, font=ft)
             draw.text(((128-word_width)/2,(128-word_height)/2), val, fill = (0), font=ft)
             # word_width, word_height = draw.textsize(val)
             # draw.text(((128-word_width)/2,(128-word_height)/2), val, fill = (0))
 
             im.save(out_file)
 
-def draw_chinese_char(input_char, src_img, font, pos='center', font_color=None, blur_kernel='random'):
+def draw_chinese_char(input_char, src_img, gt_img, font, pos='center', font_color=None, blur_kernel='random'):
     # im = Image.new('1', (128, 128), 255)
     if src_img.shape[0] == 128 and src_img.shape[1] == 128:
         im_tmp = Image.fromarray(src_img)
+        im_gt = Image.fromarray(gt_img)
     else:
         crop_size = random.randint(50, min(src_img.shape[:2]))
         crop_x = random.randint(0, src_img.shape[0]-crop_size)
         crop_y = random.randint(0, src_img.shape[1]-crop_size)
+        
         im_tmp = src_img[crop_x:crop_x+crop_size,
                         crop_y:crop_y+crop_size]
+        gt_img = gt_img[crop_x:crop_x+crop_size,
+                        crop_y:crop_y+crop_size]
         im_tmp = cv2.resize(im_tmp, (128, 128))
+        gt_img = cv2.resize(gt_img, (128, 128))
         im_tmp = Image.fromarray(im_tmp)
-
-    im_gt = Image.new("RGB", (128, 128), "white")
+        im_gt = Image.fromarray(gt_img)
+    # im_gt = Image.new("RGB", (128, 128), "black")
     draw = ImageDraw.Draw(im_tmp)
     draw_gt = ImageDraw.Draw(im_gt) #修改图片
     
     if pos == 'random':
-        font_size = 100 + random.randint(-10, 10)
+        font_size = 90 + random.randint(-10, 10)
         ft = ImageFont.truetype(font=font, size=font_size)
-        word_width, word_height = draw.textsize(input_char, font=ft)
-        lt_pos = ((128-word_width)/2 + random.randint(-10, 10), 
-                  (128-word_height)/2 + random.randint(-10, 10))
-        rb_pos = (lt_pos[0] + word_width, lt_pos[1] + word_height)
+        word_bbox = draw.textbbox((0,0), input_char, font=ft)
+        word_height = word_bbox[2] - word_bbox[0]
+        word_width = word_bbox[3] - word_bbox[1]
+        lt_pos = (random.randint(0, max(0, 128 - word_width - 5)), random.randint(0, max(0, 128 - word_height - 5)))
+        word_bbox = draw.textbbox(lt_pos, input_char, font=ft)
+        # lt_pos = [0, 20]
+        # rb_pos = (lt_pos[0] + word_width, lt_pos[1] + word_height)
     else:
         assert pos == 'center'
-        font_size = 100
+        font_size = 90
         ft = ImageFont.truetype(font=font, size=font_size)
-        word_width, word_height = draw.textsize(input_char, font=ft)
+        # word_width, word_height = draw.textsize(input_char, font=ft)
+        word_bbox = draw.textbbox((0,0), input_char, font=ft)
+        word_width = word_bbox[2] - word_bbox[0]
+        word_height = word_bbox[3] - word_bbox[1]
+        
         lt_pos = [(128-word_width)/2, (128-word_height)/2]
+        
         rb_pos = [lt_pos[0] + word_width, lt_pos[1] + word_height]
     if font_color is None:
         font_color = (random.randint(0,50), random.randint(0,50), random.randint(0,50))
     draw.text(lt_pos, input_char, fill = font_color, font=ft)
-    draw_gt.text(lt_pos, input_char, fill = (0, 0, 0), font=ft)
+    draw_gt.text(lt_pos, input_char, fill = (255, 255, 255), font=ft)
     im_tmp = np.array(im_tmp)
     im_gt = np.array(im_gt)
     if blur_kernel == 'random':
@@ -100,7 +110,11 @@ def draw_chinese_char(input_char, src_img, font, pos='center', font_color=None, 
         assert isinstance(blur_kernel, int) and blur_kernel%2 == 1, 'blur size must be 2n+1'
         kernel_size = (blur_kernel, blur_kernel)
     im_tmp = cv2.GaussianBlur(im_tmp, kernel_size, 0, 1)
-    return im_tmp, im_gt, [lt_pos[::-1], rb_pos[::-1]]
+
+    # show_bbox(im_gt, [[word_bbox[1], word_bbox[0], word_bbox[3], word_bbox[2]]], (0,0, 255))
+    # pdb.set_trace()
+    # return im_tmp, im_gt, [[lt_pos[1]-1, lt_pos[0]-1], [rb_pos[1]+1, rb_pos[0]+1]]
+    return im_tmp, im_gt, [[word_bbox[1], word_bbox[0]], [word_bbox[3], word_bbox[2]]]
 
 def draw_unicode(input_range):
     start_index = int(input_range[0], 16)
@@ -120,7 +134,7 @@ def draw_unicode(input_range):
                 size=100
             )
 
-        word_width, word_height = draw.textsize(val, font=ft)
+        word_width, word_height = draw.textbbox(val, font=ft)
         draw.text(((128-word_width)/2,(128-word_height)/2), val, fill = (0), font=ft)
         im.save(out_file)
         cur_index += 1
@@ -163,7 +177,8 @@ def isin_bbox(bbox_1, bbox_2, iou_thres=0.8):
     area_box1 = (bbox_1[2] - bbox_1[0]) * (bbox_1[3] - bbox_1[1])
     area_box2 = (bbox_2[2] - bbox_2[0]) * (bbox_2[3] - bbox_2[1])
     union = area_box1 + area_box2 - intersection
-    
+    if area_box1 <= 0:
+        return False
     bbox_iou_1 = intersection / area_box1 
     if bbox_iou_1 >= iou_thres:
         return True
@@ -190,6 +205,7 @@ def img_split(src_img, src_gt):
                                  gt_item[2]-img_bbox[0][0], 
                                  gt_item[3]-img_bbox[0][1]]
                     tmp_gt.append(bbox_item)
+            
             out_img_list.append(tmp_img)
             out_gt_list.append(tmp_gt)
     if img_h > img_w:
@@ -208,6 +224,7 @@ def img_split(src_img, src_gt):
                                  gt_item[3]-img_bbox[0][1]]
                     tmp_gt.append(bbox_item)
             out_img_list.append(tmp_img)
+            # [center_x, center_y, region_w, region_h]
             out_gt_list.append(tmp_gt)
     return out_img_list, out_gt_list
 
@@ -216,36 +233,67 @@ def np_imread(img_file):
     # cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
     return cv_img
 
-def show_bbox(src_img,char_list):
+def show_bbox(src_img, char_list, color=(0,0,255)):
     show_img = src_img.copy()
     for tmp_gt in char_list:
+        print(tmp_gt, show_img.shape)
         cv2.rectangle(show_img, (int(tmp_gt[1]), int(tmp_gt[0])),
-                                    (int(tmp_gt[3]), int(tmp_gt[2])), (0,0,255), 3)
+                                    (int(tmp_gt[3]), int(tmp_gt[2])), color, 3)
     src_img = cv2.resize(show_img, (512,512))
-    cv2.imshow('tmp', show_img)
-    cv2.waitKey()
+    cv2.imwrite('tmp.png', show_img)
+    # cv2.waitKey()
 
-def main(method):
-    font_files = glob.glob('..\\..\\fonts\\*.ttf') + glob.glob('..\\..\\fonts\\*.TTF')
-    
-    font_file = random.choice(font_files)
-    if method == 'stele':
-        bg_files = glob.glob('..\\char_binary\\img_bgs\\碑帖*.png')
-    elif method == 'calligraphy':
-        bg_files = glob.glob('..\\char_binary\\img_bgs\\书法*.png')
-    bg_file = random.choice(bg_files)
-    bg_img = np_imread(bg_file)
-    sentence_img, char_list = draw_sentence('混顿饭嘎口红放入奴隶撒娇更加开放而阿奴给你看路人粉结果撒额的按分而看就啊林父爱努蒂萨妇女节的萨夫家的沙发那u内容', bg_img, font_file, method, blur_kernel=random.randint(0,7)*2+1)
-    
-    out_name = str(uuid.uuid1())
-    out_img_file = os.path.join('', out_name+'.png')
-    out_gt_file = os.path.join('', out_name+'.txt')
-    cv2.imencode('.png', sentence_img)[1].tofile(out_img_file)
-    # cv2.imwrite(out_img_file, sentence_img)
-    img_list, gt_list = img_split(sentence_img, char_list)
+def main(method, text_file='', out_dir=''):
+    font_files = glob.glob('../../../general/fonts/*.ttf') + glob.glob('../../../general/fonts/*.TTF')
 
-    for img_index, img_item in enumerate(img_list):
-        show_bbox(img_item, gt_list[img_index])
+    if text_file:
+        text_lines = open(text_file).readlines()
+    else:
+        text_lines = ['混顿饭嘎口红放入奴隶撒娇更加开放而阿奴给你看路人粉结果撒额的按分而看就啊林父爱努蒂萨妇女节的萨夫家的沙发那u内容']
+
+    for text_line in text_lines:
+    
+        font_file = random.choice(font_files)
+        if method == 'stele':
+            bg_files = glob.glob('../char_binary/img_bgs/碑帖*.png')
+        elif method == 'calligraphy':
+            bg_files = glob.glob('../char_binary/img_bgs/书法*.png')
+        bg_file = random.choice(bg_files)
+        
+        bg_img = np_imread(bg_file)
+        sentence_img, bin_img, char_list = draw_sentence(text_line, bg_img, font_file, method, blur_kernel=random.randint(0,7)*2+1)
+    
+        
+        # out_img_file = os.path.join('', out_name+'.png')
+        # out_gt_file = os.path.join('', out_name+'.txt')
+        # cv2.imwrite(out_img_file, sentence_img)
+        img_list, gt_list = img_split(sentence_img, char_list)
+        pre_str = str(uuid.uuid1())
+
+        cv2.imencode('.png', sentence_img)[1].tofile(os.path.join('../char_binary/img_gts', pre_str + '_src' + '.png'))
+        cv2.imencode('.png', bin_img)[1].tofile(os.path.join('../char_binary/img_gts', pre_str + '_bin' + '.png'))
+        for data_index in range(len(img_list)):
+            img_item = img_list[data_index]
+            gt_item = gt_list[data_index]
+            img_h, img_w = img_item.shape[:2]
+            cv2.imencode('.png', img_item)[1].tofile(os.path.join(out_dir, pre_str + '_' + str(data_index) + '.png'))
+            gt_f = open(os.path.join(out_dir, pre_str + '_' + str(data_index) + '.txt'), 'w')
+            for gt_bbox in gt_item:
+                yolo_bbox = [gt_bbox[1] / float(img_h),
+                             gt_bbox[3] / float(img_h),
+                             gt_bbox[0] / float(img_w),
+                             gt_bbox[2] / float(img_w)]
+                yolo_bbox = [float(gt_bbox[1] + gt_bbox[3]) / 2 / img_h,
+                             float(gt_bbox[0] + gt_bbox[2]) / 2 / img_w,
+                             float(gt_bbox[3] - gt_bbox[1]) / img_h,
+                             float(gt_bbox[2] - gt_bbox[0]) / img_w
+                             ]
+                # [start_x, start_y, end_x, end_y]
+                # [center_x, center_y, region_w, region_h]
+                gt_f.write('0' + ' ' + ' '.join([str(item) for item in yolo_bbox]) + '\n')
+            
+        # for img_index, img_item in enumerate(img_list):
+        #     show_bbox(img_item, gt_list[img_index])
 
 def add_noise(input_img, noise_level, noise_color):
     out_img = input_img
@@ -263,6 +311,7 @@ def draw_sentence(input_str, bg_img, font_file, method, noise_level=0, blur_kern
     out_size = (int(bg_size[1] * resize_ratio) + 1, 
                 int(bg_size[0] * resize_ratio) + 1)
     bg_img = cv2.resize(bg_img, out_size)
+    bin_img = np.zeros(bg_img.shape).astype(np.uint8)
     if method == 'calligraphy':
         font_color = (random.randint(0,50), random.randint(0,50), random.randint(0,50))
     elif method == 'stele':
@@ -277,17 +326,41 @@ def draw_sentence(input_str, bg_img, font_file, method, noise_level=0, blur_kern
                          (col_char + 1) * (char_size + margin_size)]
             char_bg = bg_img[start_pos[0]: start_pos[0]+128,
                              start_pos[1]: start_pos[1]+128]
-            
-            char_img, _, char_bbox = draw_chinese_char(char_val, char_bg, font_file, pos='random', font_color=font_color, blur_kernel=blur_kernel)
+            gt_bg = bin_img[start_pos[0]: start_pos[0]+128,
+                             start_pos[1]: start_pos[1]+128]
+            char_img, char_gt, char_bbox = draw_chinese_char(char_val, char_bg, gt_bg, font_file, pos='random', font_color=font_color, blur_kernel=blur_kernel)
+
             # show_bbox(char_img, [char_bbox[0] + char_bbox[1]])
 
             bg_img[start_pos[0]: start_pos[0]+128,
                    start_pos[1]: start_pos[1]+128] = char_img
+            bin_img[start_pos[0]: start_pos[0]+128,
+                   start_pos[1]: start_pos[1]+128] = char_gt
+            # start_x, start_y, end_x, end_y
             char_pos = [start_pos[0] + char_bbox[0][0],
                         start_pos[1] + char_bbox[0][1],
                         start_pos[0] + char_bbox[1][0],
                         start_pos[1] + char_bbox[1][1]]
             char_pos_list.append(char_pos)
-    return bg_img, char_pos_list
+    return bg_img, bin_img, char_pos_list
 
-main(method='stele')
+def test_bbox(input_img):
+    gt_file = input_img.replace('.png', '.txt')
+    gt_lines = open(gt_file).readlines()
+    test_img = cv2.imread(input_img)
+    img_h, img_w = test_img.shape[:2]
+    for gt_line in gt_lines:
+        gt_line = gt_line.strip()
+        gt_list = gt_line.split(' ')[1:]
+        gt_list = [float(item) for item in gt_list]
+        center_x = gt_list[0] * img_w
+        center_y = gt_list[1] * img_h
+        region_x = gt_list[2] * img_w
+        region_y = gt_list[3] * img_h
+        # [center_x, center_y, region_w, region_h]
+        start_x = int(center_x - region_x / 2)
+        start_y = int(center_y - region_y / 2)
+        test_img = cv2.rectangle(test_img, (start_x, start_y), (start_x+int(region_x), start_y+int(region_y)), (0, 255, 0), 2)
+    cv2.imwrite('test.png', test_img)
+main(method='calligraphy', text_file='train_text.txt', out_dir='gene_data_train')
+# test_bbox(glob.glob('gene_data_test/*.png')[0])
